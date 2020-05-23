@@ -27,7 +27,7 @@ from keras import backend as K
 def save_data_hdf5(data, ds_name, file_address, mode="w"):
 
     h5_file = h5py.File(file_address+".hdf5", mode)
-    dset = h5_file.create_dataset(ds_name, shape=data.shape)
+    dset = h5_file.create_dataset(ds_name, shape = data.shape)
     dset[:] = data
     h5_file.close()
 
@@ -41,7 +41,8 @@ class GradsCallback(Callback):
         self.h_actions = []
         self.h_gradients_0 = []
         self.h_gradients_1 = []
-        self.h_states=[]
+        self.h_states = []
+        self.h_Q_values = []
         self.epis = 0
 
     def _set_env(self, env):
@@ -69,12 +70,16 @@ class GradsCallback(Callback):
          can be used by register functions to calculate gradients.
         :return: a 3-d tuple
         """
-        #print(self.env.state)
-        # current_state = self.env.get_reduced_features_tuple()
         current_state = self.env.state
-        current_state = np.expand_dims(current_state, axis=0) # SOHEIL: WHY YOU DO THIS TWICE
+        current_state = np.expand_dims(current_state, axis=0) 
         current_state = list(np.expand_dims(current_state, axis=0))
         return current_state
+    
+    def get_q_value(self):
+        """ Extracting Q values"""
+        current_state = self._read_current_state()
+        return dqn.compute_batch_q_values(current_state)
+
 
     def on_episode_begin(self, episode, logs={}):
         """Called at beginning of each episode"""
@@ -83,14 +88,17 @@ class GradsCallback(Callback):
     def on_episode_end(self, episode, logs={}):
         """Called at end of each episode"""
 
-        save_data_hdf5(np.asarray(self.h_gradients_0), "ep-grads-0_"+str(self.epis), "/home/lesoleil/Desktop/RL/keras-rl/soheil_logs/cartpole_dqn_log", 'a')
-        save_data_hdf5(np.asarray(self.h_gradients_1), "ep-grads-1_" + str(self.epis), "/home/lesoleil/Desktop/RL/keras-rl/soheil_logs/cartpole_dqn_log", 'a')
-        save_data_hdf5(np.asarray(self.h_actions), "ep-actions_" + str(self.epis), "/home/lesoleil/Desktop/RL/keras-rl/soheil_logs/cartpole_dqn_log", 'a')
-        save_data_hdf5(np.asarray(self.h_states), "ep-states_" + str(self.epis), "/home/lesoleil/Desktop/RL/keras-rl/soheil_logs/cartpole_dqn_log", 'a')
+        save_data_hdf5(np.asarray(self.h_gradients_0), "ep-grads-0_"+str(self.epis), "/home/lesoleil/Desktop/ML/RL/keras-rl/soheil_logs/cartpole_dqn_log", 'a')
+        save_data_hdf5(np.asarray(self.h_gradients_1), "ep-grads-1_" + str(self.epis), "/home/lesoleil/Desktop/ML/RL/keras-rl/soheil_logs/cartpole_dqn_log", 'a')
+        save_data_hdf5(np.asarray(self.h_actions), "ep-actions_" + str(self.epis), "/home/lesoleil/Desktop/ML/RL/keras-rl/soheil_logs/cartpole_dqn_log", 'a')
+        save_data_hdf5(np.asarray(self.h_states), "ep-states_" + str(self.epis), "/home/lesoleil/Desktop/ML/RL/keras-rl/soheil_logs/cartpole_dqn_log", 'a')
+        save_data_hdf5(np.asarray(self.h_Q_values), "ep-q_values_" + str(self.epis), "/home/lesoleil/Desktop/ML/RL/keras-rl/soheil_logs/cartpole_dqn_log", 'a')
         self.h_actions = []
         self.h_gradients_0 = []
         self.h_gradients_1 = []
         self.h_states = []
+        self.h_Q_values = []
+        
 
         self.epis+=1
         pass
@@ -108,15 +116,18 @@ class GradsCallback(Callback):
         """Called at beginning of each action"""
 
         c_s = self._read_current_state()
-
+        Q_vals = self.get_q_value()[0]
+        
         out_grad_0 = self.get_gradients[0](c_s)[0]
         out_grad_1 = self.get_gradients[1](c_s)[0]
-
+        
         self.h_gradients_0.append(out_grad_0[0])
         self.h_gradients_1.append(out_grad_1[0])
 
         self.h_actions.append(action)
         self.h_states.append(c_s[0][0])
+
+        self.h_Q_values.append(Q_vals)
 
         self.env.current_gradients = out_grad_0[0]
 
@@ -203,6 +214,7 @@ if args.mode == 'test':
     dqn.load_weights(weights_filename)
     if args.callbacks == True:
         dqn.test(env, nb_episodes = args.nb_episodes_for_test , visualize = args.visualize , callbacks = [GradsCallback()])
+        
     else:
         dqn.test(env, nb_episodes = args.nb_episodes_for_test , visualize = args.visualize)
 
