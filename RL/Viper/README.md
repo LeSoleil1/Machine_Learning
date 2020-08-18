@@ -1,13 +1,13 @@
 VIPER
 =====
-
+The modified version of VIPER.
 VIPER is a tool extracting decision tree policies from an oracle (e.g., a deep Q network) using imitation learning.
 
 Table of Contents
 =====
 0. Prerequisites
 1. Running VIPER
-2. Contact
+2. Original version
 
 Prerequisites
 =====
@@ -22,7 +22,7 @@ We have included an example of how to run VIPER using the DQN oracle for the Ata
     $ cd python
     $ python -m viper.pong.main
 
-Contact
+Original version
 =====
-
-For questions, feel free to contact `obastani@csail.mit.edu`.
+For checking the original version check the link: https://github.com/obastani/viper
+The paper can be found here: https://arxiv.org/abs/1805.08328
